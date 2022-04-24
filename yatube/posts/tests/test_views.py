@@ -246,7 +246,8 @@ class PiginatorViewsTest(TestCase):
         self.authorized_client.force_login(self.user)
 
         for follower_posts in range(SUM_OF_PAGINATOR_POSTS):
-            self.follower = User.objects.create_user(username=str(follower_posts))
+            self.follower = User.objects.create_user(
+                username=str(follower_posts))
             self.follower_client = Client()
             self.follower_client.force_login(self.follower)
             Follow.objects.create(user=self.follower,

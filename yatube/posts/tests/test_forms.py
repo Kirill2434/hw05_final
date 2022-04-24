@@ -139,7 +139,7 @@ class FormTests(TestCase):
             response,
             reverse('posts:post_detail', kwargs={'post_id': self.post.id}))
         first_comment = Comment.objects.first()
-        self.assertEqual(Comment.objects.count(), comments_count+1)
+        self.assertEqual(Comment.objects.count(), comments_count + 1)
         self.assertEqual(first_comment.post, self.comments.post)
         self.assertEqual(first_comment.author, self.comments.author)
         self.assertEqual(first_comment.text, self.comments.text)
