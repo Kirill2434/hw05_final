@@ -228,6 +228,7 @@ class PiginatorViewsTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='Auto_2')
+
         cls.group = Group.objects.create(
             title='Тестовая группа_2',
             slug='test_slug',
@@ -244,17 +245,36 @@ class PiginatorViewsTest(TestCase):
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
+        for follower_posts in range(SUM_OF_PAGINATOR_POSTS):
+            self.follower = User.objects.create_user(username=str(follower_posts))
+            self.follower_client = Client()
+            self.follower_client.force_login(self.follower)
+            Follow.objects.create(user=self.follower,
+                                  author=self.posts.author)
+
     def test_paginator_correct_first_page(self):
         """ Проверка первой страницы паджинатора. """
         templates = [
             reverse('posts:index'),
             reverse('posts:group_lists', kwargs={'slug': self.group.slug}),
             reverse('posts:profile',
-                    kwargs={'username': self.user.username})
+                    kwargs={'username': self.user.username}),
         ]
         for num in range(len(templates)):
             with self.subTest(templates=templates[num]):
                 response = self.authorized_client.get(templates[num])
+                self.assertEqual(len(
+                    response.context['page_obj']
+                ), settings.POSTS_PER_PAGE)
+
+    def test_paginator_follow_correct_first_page(self):
+        """ Проверка первой страницы паджинатора с подписками. """
+        templates = [
+            reverse('posts:follow_index')
+        ]
+        for num in range(len(templates)):
+            with self.subTest(templates=templates[num]):
+                response = self.follower_client.get(templates[num])
                 self.assertEqual(len(
                     response.context['page_obj']
                 ), settings.POSTS_PER_PAGE)
@@ -266,11 +286,23 @@ class PiginatorViewsTest(TestCase):
             reverse('posts:group_lists',
                     kwargs={'slug': self.group.slug}) + '?page=2',
             reverse('posts:profile',
-                    kwargs={'username': self.user.username}) + '?page=2'
+                    kwargs={'username': self.user.username}) + '?page=2',
         ]
         for num_2 in range(len(templates_2)):
             with self.subTest(templates=templates_2[num_2]):
                 response = self.authorized_client.get(templates_2[num_2])
+                self.assertEqual(len(
+                    response.context['page_obj']
+                ), SECOND_PAGE_PAGINATOR_POSTS)
+
+    def test_paginator_follow_correct_second_page(self):
+        """ Проверка второй страницы паджинатора с подписками. """
+        templates_2 = [
+            reverse('posts:follow_index') + '?page=2',
+        ]
+        for num_2 in range(len(templates_2)):
+            with self.subTest(templates=templates_2[num_2]):
+                response = self.follower_client.get(templates_2[num_2])
                 self.assertEqual(len(
                     response.context['page_obj']
                 ), SECOND_PAGE_PAGINATOR_POSTS)
@@ -296,11 +328,13 @@ class FollowTests(TestCase):
     def test_follow_true(self):
         """ Авторизованный пользователь может
         подписываться на других пользователей. """
+        follow_count = Follow.objects.count()
         self.follower_client.get(
             reverse('posts:profile_follow', kwargs={'username': self.user}))
         follow = Follow.objects.filter(
             user=self.follower, author=self.post.author).exists()
         self.assertTrue(follow)
+        self.assertEqual(Follow.objects.count(), follow_count + 1)
 
     def test_unfollow_true(self):
         """ Авторизованный пользователь может

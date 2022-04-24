@@ -28,7 +28,8 @@ def profile(request, username):
     ).exists()
     context = {
         'author': author,
-        'following': following
+        'following': following,
+        'request_user': request.user
     }
     context.update(pagination(author.posts.all(), request))
     return render(request, 'posts/profile.html', context)

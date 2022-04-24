@@ -14,11 +14,12 @@ User = get_user_model()
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
-class TaskCreateFormTests(TestCase):
+class FormTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='Auth')
+        cls.guest = User.objects.create_user(username='Гость')
         cls.group = Group.objects.create(
             title='Ожидаемая группа',
             slug='test-slug',
@@ -138,10 +139,42 @@ class TaskCreateFormTests(TestCase):
             response,
             reverse('posts:post_detail', kwargs={'post_id': self.post.id}))
         first_comment = Comment.objects.first()
-        self.assertEqual(Comment.objects.count(), comments_count + 1)
+        self.assertEqual(Comment.objects.count(), comments_count+1)
         self.assertEqual(first_comment.post, self.comments.post)
         self.assertEqual(first_comment.author, self.comments.author)
         self.assertEqual(first_comment.text, self.comments.text)
+
+    def test_add_comment_guest_client(self):
+        """ Неавторизованный пользователь не может комментировать посты. """
+
+        self.post = Post.objects.create(
+            text='Текст для теста_2',
+            author=self.user,
+            group=self.group
+        )
+        self.comments = Comment.objects.create(
+            post=self.post,
+            author=self.guest,
+            text='Текст комментария_2'
+        )
+        comments_count = Comment.objects.count()
+        form = {
+            'post': self.comments.post,
+            'author': self.comments.author,
+            'text': self.comments.text
+        }
+        response = self.guest_client.post(
+            reverse('posts:add_comment', kwargs={'post_id': self.post.id}),
+            data=form,
+            follow=True
+        )
+        post_name = 'posts:add_comment'
+        name = reverse(post_name, kwargs={'post_id': self.post.id})
+        self.edit_post_2.refresh_from_db()
+        self.assertRedirects(response,
+                             f"{reverse('users:login')}?next="
+                             f"{name}")
+        self.assertEqual(Comment.objects.count(), comments_count)
 
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
